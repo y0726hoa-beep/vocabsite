@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>115 單字大師 - 精簡質感版</title>
+    <style>
+        :root { --rose: #a67c84; --deep: #3d2b2f; --perfect: #2e7d32; --normal: #ef6c00; --unfamiliar: #b71c1c; }
+        body { font-family: 'PingFang TC', sans-serif; background: #fffdfd; margin: 0; padding: 15px; color: #000; }
+        .container { max-width: 800px; margin: auto; }
+        .header-tools { position: sticky; top: 0; background: #fffdfd; padding: 10px 0; z-index: 100; border-bottom: 3px solid var(--rose); }
+        input[type="text"] { width: 100%; padding: 12px; border: 2px solid var(--rose); border-radius: 10px; font-size: 16px; outline: none; }
+        .nav-tabs { display: flex; margin: 15px 0; border-radius: 10px; overflow: hidden; border: 2px solid var(--rose); }
+        .tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; font-weight: bold; background: #fdf2f4; color: var(--rose); }
+        .tab.active { background: var(--rose); color: white; }
+        .filter-buttons { display: flex; gap: 6px; justify-content: center; margin-bottom: 15px; }
+        .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--rose); cursor: pointer; font-weight: bold; background: #fff; color: var(--rose); font-size: 13px; }
+        .filter-btn.active { background: var(--deep); color: white; border-color: var(--deep); }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px; }
+        /* 調整卡片高度，減少留白 */
+        .card { height: 240px; perspective: 1000px; cursor: pointer; }
+        .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.5s; transform-style: preserve-3d; }
+        .card.flipped .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; flex-direction: column; background: #fff; border-radius: 20px; padding: 15px; border: 3px solid var(--deep); box-shadow: 0 4px 10px rgba(0,0,0,0.05); box-sizing: border-box; }
+        .card-back { transform: rotateY(180deg); background: #fdfafb; }
+        .front-main { flex-grow: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+        .word-eng { font-size: 28px; font-weight: 900; color: #000; line-height: 1.1; }
+        .word-kk { font-size: 15px; color: #555; font-weight: bold; margin-top: 5px; }
+        .word-pos { font-size: 13px; color: var(--rose); font-style: italic; margin-top: 2px; }
+        .front-footer { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .quiz-item { background: #fff; padding: 15px; margin-bottom: 12px; border-radius: 15px; border: 2px solid var(--rose); }
+        .quiz-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; font-weight: bold; font-size: 16px; }
+        .quiz-input-area { background: #fdf2f4; padding: 12px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .spell-input { padding: 10px; width: 90%; border: 2px solid var(--deep); border-radius: 8px; font-size: 18px; text-align: center; outline: none; }
+        .spell-input.correct { border-color: var(--perfect); background: #e8f5e9; }
+        .spell-input.wrong { border-color: var(--unfamiliar); background: #ffebee; }
+        .btn-status { border: 1.5px solid var(--rose); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; color: var(--rose); background: #fff; transition: 0.2s; }
+        .btn-status.selected { background: var(--rose); color: white; transform: scale(1.05); }
+        /* 加深查看解答按鈕 */
+        .ans-btn { background: #8e1515; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .ans-text { display: none; color: #000; font-size: 20px; font-weight: 900; margin-left: 10px; border-bottom: 3px solid #000; }
+        .hidden-hint { background: var(--rose); color: transparent; padding: 1px 8px; border-radius: 5px; cursor: help; font-size: 13px; }
+        .hidden-hint:hover { background: transparent; color: var(--rose); }
+        .section { display: none; } .section.active { display: block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header-tools"><input type="text" id="s" placeholder="🔍 搜尋 115 個單字..." oninput="render()"><div class="filter-buttons" style="margin-top:15px"><button class="filter-btn active" onclick="setF('all', this)">全部</button><button class="filter-btn" onclick="setF('p', this)">完美</button><button class="filter-btn" onclick="setF('n', this)">普通</button><button class="filter-btn" onclick="setF('u', this)">不熟</button></div></div>
+    <div class="nav-tabs"><div class="tab active" id="t1" onclick="show('c')">單字卡</div><div class="tab" id="t2" onclick="show('q')">拼字挑戰</div></div>
+    <div id="secC" class="section active"><div class="card-grid" id="grid"></div></div>
+    <div id="secQ" class="section"><div id="list"></div></div>
+</div>
+<script>
+let states = JSON.parse(localStorage.getItem('v115')) || {};
+let filter = 'all';
+const data = [
+{e:"amazing",k:"/əˈmeɪzɪŋ/",p:"adj.",c:"驚人的",d:"amazing discovery"},{e:"invention",k:"/ɪnˈvɛnʃən/",p:"n.",c:"發明",d:"modern invention"},{e:"contribute to",k:"/kənˈtrɪbjut tu/",p:"phr.",c:"促成、導致",d:"contribute to success"},{e:"vehicle",k:"/ˈviɪkəl/",p:"n.",c:"車輛、交通工具",d:"motor vehicle"},{e:"nevertheless",k:"/ˌnɛvɚðəˈlɛs/",p:"adv.",c:"然而，儘管如此",d:"Nevertheless, ..."},{e:"unavoidable",k:"/ˌʌnəˈvɔɪdəbəl/",p:"adj.",c:"不可避免的",d:"unavoidable delay"},{e:"restrict",k:"/rɪˈstrɪkt/",p:"v. phr.",c:"限制",d:"restrict A to B"},{e:"energy-efficient",k:"/ˈɛnɚdʒɪ-ɪˈfɪʃənt/",p:"adj.",c:"節能的",d:"energy-efficient bulbs"},{e:"fuel",k:"/ˈfjuəl/",p:"n.",c:"燃料",d:"fossil fuel"},{e:"instead of",k:"/ɪnˈstɛd ʌv/",p:"phr.",c:"而不是",d:"instead of + Ving"},{e:"figure",k:"/ˈfɪɡjɚ/",p:"n.",c:"圖表",d:"official figure"},{e:"passenger",k:"/ˈpæsəndʒɚ/",p:"n.",c:"乘客",d:"train passenger"},{e:"instruction",k:"/ɪnˈstrʌkʃən/",p:"n.",c:"說明、指示",d:"follow instructions"},{e:"shade",k:"/ʃed/",p:"n.",c:"捲簾",d:"pull down the shade"},{e:"airline",k:"/ˈɛrˌlaɪn/",p:"n.",c:"航空公司",d:"major airline"},{e:"in comparison to",k:"/ɪn kəmˈpærəsn tu/",p:"phr.",c:"與⋯相比",d:"In comparison to A"},{e:"conventional",k:"/kənˈvɛnʃənəl/",p:"adj.",c:"傳統的",d:"conventional way"},{e:"joint",k:"/dʒɔɪnt/",p:"adj.",c:"聯合的",d:"joint venture"},{e:"emit",k:"/iˈmɪt/",p:"v.",c:"發出、釋放",d:"emit gas"},{e:"all told",k:"/ɔl told/",p:"phr.",c:"總共",d:"100 people all told"},{e:"aviation",k:"/ˌeviˈeʃən/",p:"n.",c:"航空",d:"aviation safety"},{e:"emission",k:"/iˈmɪʃən/",p:"n.",c:"排放量",d:"carbon emission"},{e:"long-haul",k:"/ˈlɔŋ-hɔl/",p:"adj.",c:"長途的",d:"long-haul flight"},{e:"cruise",k:"/kruz/",p:"v.",c:"航行",d:"cruise speed"},{e:"taxi",k:"/ˈtæksɪ/",p:"v.",c:"地面滑行",d:"taxi to runway"},{e:"accommodate",k:"/əˈkɑməˌdet/",p:"v.",c:"容納",d:"accommodate 100 guests"},{e:"flight attendant",k:"/flaɪt əˈtɛndənt/",p:"n.",c:"空服員",d:"ask the attendant"},{e:"trivial",k:"/ˈtrɪvɪəl/",p:"adj.",c:"瑣碎的",d:"trivial detail"},{e:"minimize",k:"/ˈmɪnəˌmaɪz/",p:"v.",c:"使降到最小",d:"minimize risk"},{e:"ecofriendly",k:"/ˌikoʊˈfrɛndli/",p:"adj.",c:"環保的",d:"ecofriendly bag"},{e:"biofuel",k:"/ˈbaɪoˌfjuəl/",p:"n.",c:"生物燃料",d:"use biofuel"},{e:"petroleum",k:"/pəˈtrolɪəm/",p:"n.",c:"石油",d:"petroleum output"},{e:"workplace",k:"/ˈwɝkˌples/",p:"n.",c:"工作場所",d:"at the workplace"},{e:"poster",k:"/ˈpostɚ/",p:"n.",c:"海報",d:"put up a poster"},{e:"campus",k:"/ˈkæmpəs/",p:"n.",c:"校園",d:"on campus"},{e:"information",k:"/ˌɪnfɚˈmeʃən/",p:"n.",c:"資訊",d:"get information"},{e:"graphics",k:"/ˈɡræfɪks/",p:"n. pl.",c:"圖象，圖案",d:"computer graphics"},{e:"visual",k:"/ˈvɪʒuəl/",p:"adj.",c:"視覺的",d:"visual aid"},{e:"representation",k:"/ˌrɛprɪzɛnˈteʃən/",p:"n.",c:"展現，表現",d:"visual representation"},{e:"collection",k:"/kəˈlɛkʃən/",p:"n.",c:"集合，收集",d:"data collection"},{e:"striking",k:"/ˈstraɪkɪŋ/",p:"adj.",c:"醒目的、驚人的",d:"striking contrast"},{e:"engaging",k:"/ɪnˈɡedʒɪŋ/",p:"adj.",c:"吸引人的",d:"engaging story"},{e:"interpret",k:"/ɪnˈtɝprɪt/",p:"v.",c:"詮釋，解釋",d:"interpret dreams"},{e:"awareness",k:"/əˈwɛrnəs/",p:"n.",c:"意識",d:"raise awareness"},{e:"advertisement",k:"/ˌædvɚˈtaɪzmənt/",p:"n.",c:"廣告",d:"post an ad"},{e:"media",k:"/ˈmidɪə/",p:"n.",c:"媒體",d:"social media"},{e:"statistic",k:"/stəˈtɪstɪk/",p:"n.",c:"數據",d:"vital statistic"},{e:"illustration",k:"/ˌɪləˈstreʃən/",p:"n.",c:"插圖",d:"clear illustration"},{e:"logical",k:"/ˈlɑdʒɪkəl/",p:"adj.",c:"有邏輯的",d:"logical conclusion"},{e:"stand out",k:"/stænd aʊt/",p:"phr.",c:"突出",d:"stand out from crowd"},{e:"relate to",k:"/rɪˈlet tu/",p:"phr.",c:"認同，產生共鳴",d:"relate to others"},{e:"accordingly",k:"/əˈkɔrdɪŋli/",p:"adv.",c:"因此",d:"act accordingly"},{e:"corporate",k:"/ˈkɔrpərɪt/",p:"adj.",c:"公司的",d:"corporate goal"},{e:"imagery",k:"/ˈɪmɪdʒri/",p:"n.",c:"意象",d:"poetic imagery"},{e:"overview",k:"/ˈovɚˌvju/",p:"n.",c:"概觀，概述",d:"brief overview"},{e:"recommend",k:"/ˌrɛkəˈmɛnd/",p:"v.",c:"推薦，建議",d:"highly recommend"},{e:"specialist",k:"/ˈspɛʃəlɪst/",p:"n.",c:"專家",d:"eye specialist"},{e:"highlight",k:"/ˈhaɪˌlaɪt/",p:"v.",c:"強調，突顯",d:"highlight the point"},{e:"flyer",k:"/ˈflaɪɚ/",p:"n.",c:"傳單",d:"pass out flyers"},{e:"brochure",k:"/broˈʃʊr/",p:"n.",c:"小冊",d:"travel brochure"},{e:"cause",k:"/kɔz/",p:"n.",c:"理念",d:"fight for a cause"},{e:"educator",k:"/ˈɛdʒəˌketɚ/",p:"n.",c:"教育者",d:"skilled educator"},{e:"unforgettable",k:"/ˌʌnfɚˈɡɛtəbəl/",p:"adj.",c:"難忘的",d:"unforgettable trip"},{e:"icon",k:"/ˈaɪkɑn/",p:"n.",c:"圖示",d:"desktop icon"},{e:"hierarchy",k:"/ˈhaɪəˌrɑrkɪ/",p:"n.",c:"階層",d:"social hierarchy"},{e:"font",k:"/fɑnt/",p:"n.",c:"字體",d:"change font"},{e:"heading",k:"/ˈhɛdɪŋ/",p:"n.",c:"標題",d:"main heading"},{e:"obstacle",k:"/ˈɑbstəkəl/",p:"n.",c:"障礙",d:"overcome obstacles"},{e:"ladder",k:"/ˈlædɚ/",p:"n.",c:"梯子",d:"career ladder"},{e:"vital",k:"/ˈvaɪtəl/",p:"adj.",c:"重要的",d:"be vital to N"},{e:"ensure",k:"/ɪnˈʃʊr/",p:"v.",c:"確保",d:"ensure safety"},{e:"emotional",k:"/ɪˈmoʃənəl/",p:"adj.",c:"情緒上的",d:"emotional support"},{e:"well-being",k:"/ˈwɛl-ˈbiɪŋ/",p:"n.",c:"幸福",d:"physical well-being"},{e:"boost",k:"/bust/",p:"v.",c:"促進，增進",d:"boost morale"},{e:"in contrast",k:"/ɪn ˈkɑntræst/",p:"phr.",c:"對比之下",d:"In contrast to A"},{e:"comfort zone",k:"/ˈkʌmfɚt zon/",p:"phr.",c:"舒適圈",d:"out of comfort zone"},{e:"dependent on",k:"/dɪˈpɛndənt ɑn/",p:"phr.",c:"依賴",d:"be dependent on A"},{e:"scale",k:"/skel/",p:"v.",c:"攀登",d:"scale walls"},{e:"intentional",k:"/ɪnˈtɛnʃənəl/",p:"adj.",c:"刻意的",d:"intentional act"},{e:"career",k:"/kəˈrɪr/",p:"n.",c:"事業",d:"career goals"},{e:"desperately",k:"/ˈdɛspərɪtli/",p:"adv.",c:"絕望地、拼命地",d:"desperately need"},{e:"ashamed",k:"/əˈʃemd/",p:"adj.",c:"羞愧的",d:"be ashamed of"},{e:"hinder",k:"/ˈhɪndɚ/",p:"v.",c:"妨礙",d:"hinder progress"},{e:"refine",k:"/rɪˈfaɪn/",p:"v.",c:"改良，使精煉",d:"refine skills"},{e:"reorganize",k:"/riˈɔrɡəˌnaɪz/",p:"v.",c:"重新組成",d:"reorganize files"},{e:"productivity",k:"/ˌprodʌkˈtɪvəti/",p:"n.",c:"生產力",d:"boost productivity"},{e:"negate",k:"/nɪˈɡet/",p:"v.",c:"否定",d:"negate effects"},{e:"query",k:"/ˈkwɪri/",p:"v./n.",c:"表示懷疑",d:"reply to query"},{e:"overly",k:"/ˈovɚli/",p:"adv.",c:"過度地",d:"overly sensitive"},{e:"dwindle",k:"/ˈdwɪndəl/",p:"v.",c:"變小",d:"dwindling supplies"},{e:"benign neglect",k:"/bɪˈnaɪn nɪˈɡlɛkt/",p:"n.",c:"良性忽略",d:"policy of neglect"},{e:"nurture",k:"/ˈnɝtʃɚ/",p:"v.",c:"養育",d:"nurture a child"},{e:"hence",k:"/hɛns/",p:"adv.",c:"因此",d:"Hence, we win"},{e:"extremely",k:"/ɪkˈstriːmli/",p:"adv.",c:"極度",d:"extremely hot"},{e:"capacity",k:"/kəˈpæsəti/",p:"n.",c:"能力",d:"full capacity"},{e:"publish",k:"/ˈpʌblɪʃ/",p:"v.",c:"刊登，出版",d:"publish a book"},{e:"generate",k:"/ˈdʒɛnəˌret/",p:"v.",c:"產生",d:"generate power"},{e:"magical",k:"/ˈmædʒɪkəl/",p:"adj.",c:"魔法般的",d:"magical night"},{e:"structure",k:"/ˈstrʌktʃɚ/",p:"n.",c:"構造",d:"cell structure"},{e:"bundle",k:"/ˈbʌndəl/",p:"n.",c:"捆；大量",d:"bundle of sticks"},{e:"vessel",k:"/ˈvɛsəl/",p:"n.",c:"血管/容器",d:"blood vessel"},{e:"transfer",k:"/trænsˈfɝ/",p:"v.",c:"傳送",d:"transfer money"},{e:"exchange",k:"/ɪksˈtʃendʒ/",p:"n./v.",c:"交換",d:"in exchange for"},{e:"surround",k:"/səˈraʊnd/",p:"v.",c:"圍繞",d:"be surrounded"},{e:"retain",k:"/rɪˈten/",p:"v.",c:"保留",d:"retain heat"},{e:"distinct",k:"/dɪˈstɪŋkt/",p:"adj.",c:"與眾不同",d:"distinct smell"},{e:"regionally",k:"/ˈridʒənəli/",p:"adv.",c:"區域性地",d:"grow regionally"},{e:"Frisbee",k:"/ˈfrɪzbi/",p:"n.",c:"飛盤",d:"play Frisbee"},{e:"fin",k:"/fɪn/",p:"n.",c:"鰭",d:"dorsal fin"},{e:"prey",k:"/pre/",p:"n.",c:"獵物",d:"fall prey to"},{e:"flap",k:"/flæp/",p:"v.",c:"拍動",d:"flap wings"},{e:"gill",k:"/ɡɪl/",p:"n.",c:"鰓",d:"breathe through gills"},{e:"exchanger",k:"/ɪksˈtʃendʒɚ/",p:"n.",c:"交換器",d:"heat exchanger"},{e:"tuna",k:"/ˈtunə/",p:"n.",c:"金槍魚",d:"tuna fishing"},{e:"metabolism",k:"/məˈtæbəˌlɪzəm/",p:"n.",c:"代謝",d:"boost metabolism"},{e:"Celsius",k:"/ˈsɛlsiəs/",p:"n.",c:"攝氏",d:"degree Celsius"},{e:"predator",k:"/ˈprɛdətɚ/",p:"n.",c:"捕食者",d:"top predator"},{e:"advantaged",k:"/ədˈvæntɪdʒd/",p:"adj.",c:"具優勢",d:"be advantaged"},{e:"research",k:"/ˈriːsɝtʃ/",p:"n./v.",c:"研究",d:"scientific research"},{e:"lab",k:"/læb/",p:"n.",c:"實驗室",d:"research lab"},{e:"sacrifice",k:"/ˈsækrəˌfaɪs/",p:"v./n.",c:"犧牲",d:"make a sacrifice"},{e:"subject",k:"/ˈsʌbdʒɪkt/",p:"n.",c:"受試者",d:"experimental subjects"},{e:"fortunately",k:"/ˈfɔrtʃənətli/",p:"adv.",c:"幸運地",d:"Fortunately, no one"},{e:"evidence",k:"/ˈɛvədəns/",p:"n.",c:"證據",d:"clear evidence"},{e:"flush",k:"/flʌʃ/",p:"v.",c:"沖洗",d:"flush with water"},{e:"curious",k:"/ˈkjʊrɪəs/",p:"adj.",c:"好奇的",d:"be curious about"},{e:"experiment",k:"/ɪkˈspɛrəmənt/",p:"n./v.",c:"實驗",d:"conduct experiment"},{e:"previous",k:"/ˈpriːviəs/",p:"adj.",c:"先前的",d:"previous day"},{e:"current",k:"/ˈkɝənt/",p:"n./adj.",c:"電流",d:"strong current"},{e:"rush",k:"/rʌʃ/",p:"v.",c:"猛衝",d:"rush to room"},{e:"temporarily",k:"/ˈtɛmpəˌrɛrəli/",p:"adv.",c:"暫時地",d:"closed temporarily"},{e:"volume",k:"/ˈvɑljum/",p:"n.",c:"容量",d:"turn up volume"},{e:"confirm",k:"/kənˈfɝm/",p:"v.",c:"證實",d:"confirm order"},{e:"pave the way for",k:"/pev ðə we fɔr/",p:"phr.",c:"鋪路",d:"pave the way"},{e:"toxin",k:"/ˈtɑksɪn/",p:"n.",c:"毒素",d:"remove toxins"},{e:"cleanse",k:"/klɛnz/",p:"v.",c:"清洗",d:"cleanse the skin"},{e:"neuroscientist",k:"/ˌnjʊroˈsaɪəntɪst/",p:"n.",c:"腦科學家",d:"renowned scientist"},{e:"unveil",k:"/ʌnˈvel/",p:"v.",c:"揭露",d:"unveil secret"},{e:"slumber",k:"/ˈslʌmbɚ/",p:"v.",c:"睡覺",d:"deep slumber"},{e:"fruitful",k:"/ˈfrut fəl/",p:"adj.",c:"有成果",d:"fruitful talk"},{e:"restorative",k:"/rɪˈstɔrətɪv/",p:"adj.",c:"恢復精力",d:"restorative sleep"},{e:"toxic",k:"/ˈtɑksɪk/",p:"adj.",c:"有毒的",d:"toxic waste"},{e:"cerebrospinal fluid",k:"/səˌribroˈspaɪnəl/",p:"n.",c:"腦脊髓液",d:"CSF fluid"},{e:"blood oxygen-level dependent",k:"/blʌd/",p:"n.",c:"血氧相依",d:"BOLD signal"},{e:"respectively",k:"/rɪˈspɛktɪvli/",p:"adv.",c:"分別地",d:"A and B respectively"},{e:"retention",k:"/rɪˈtɛn/",p:"n.",c:"保留",d:"memory retention"},{e:"neuron",k:"/ˈnjʊrɑn/",p:"n.",c:"神經元",d:"brain neurons"},{e:"lessen",k:"/ˈlɛsən/",p:"v.",c:"變少",d:"lessen the burden"},{e:"Alzheimer’s disease",k:"/ˈɑltshaɪmɚz dɪˈziz/",p:"n.",c:"阿茲海默",d:"prevent Alzheimer's"}
+];
+
+function setF(v, b) { filter = v; document.querySelectorAll('.filter-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); render(); }
+function show(s) { 
+    document.getElementById('secC').className = (s==='c'?'section active':'section');
+    document.getElementById('secQ').className = (s==='q'?'section active':'section');
+    document.getElementById('t1').className = (s==='c'?'tab active':'tab');
+    document.getElementById('t2').className = (s==='q'?'tab active':'tab');
+}
+function speak(t) { window.speechSynthesis.speak(new SpeechSynthesisUtterance(t)); }
+function setS(w, s) { if(states[w]===s) delete states[w]; else states[w]=s; localStorage.setItem('v115', JSON.stringify(states)); render(); }
+function getH(w) { return w.split(' ').map(p => p.length<=1?p:p[0]+"_".repeat(p.length-2)+p[p.length-1]).join(' '); }
+function ans(i, c) {
+    const input = document.getElementById('i'+i), txt = document.getElementById('a'+i), btn = document.getElementById('b'+i);
+    if(txt.style.display==='inline') { txt.style.display='none'; btn.innerText='查看解答'; input.className='spell-input'; }
+    else { txt.style.display='inline'; btn.innerText='收回解答'; input.className = (input.value.trim().toLowerCase()===c.toLowerCase()?'spell-input correct':'spell-input wrong'); }
+}
+function render() {
+    const q = document.getElementById('s').value.toLowerCase(), g = document.getElementById('grid'), l = document.getElementById('list');
+    g.innerHTML = ''; l.innerHTML = '';
+    data.forEach((w, i) => {
+        const s = states[w.e] || 'none';
+        if((filter === 'all' || s === filter) && (w.e.includes(q) || w.c.includes(q))) {
+            const div = document.createElement('div'); div.className = 'card';
+            div.innerHTML = `<div class="card-inner" onclick="this.parentElement.classList.toggle('flipped')">
+                <div class="card-front"><div class="front-main"><div class="word-eng">${w.e}</div><div class="word-kk">${w.k}</div><div class="word-pos">${w.p}</div></div>
+                <div class="front-footer"><div style="font-size:22px; cursor:pointer" onclick="event.stopPropagation(); speak('${w.e}')">🔊</div>
+                <div class="filter-buttons" style="margin-top:8px"><button class="btn-status ${s==='p'?'selected':''}" onclick="event.stopPropagation(); setS('${w.e}','p')">完美</button><button class="btn-status ${s==='n'?'selected':''}" onclick="event.stopPropagation(); setS('${w.e}','n')">普通</button><button class="btn-status ${s==='u'?'selected':''}" onclick="event.stopPropagation(); setS('${w.e}','u')">不熟</button></div></div></div>
+                <div class="card-back"><div class="front-main"><b style="font-size:22px; color:#000;">${w.c}</b><hr style="width:100%; border:1.5px solid var(--rose); margin:12px 0;"><div style="color:var(--deep); font-weight:bold; font-size:14px; text-align:center;">用法：<br>${w.d}</div></div></div></div>`;
+            g.appendChild(div);
+            const qdiv = document.createElement('div'); qdiv.className = 'quiz-item';
+            qdiv.innerHTML = `<div class="quiz-header"><b>${w.c}</b> <span style="color:#666; font-size:13px">${w.k} ${w.p}</span> <span style="cursor:pointer" onclick="speak('${w.e}')">🔊</span> <span class="hidden-hint">${getH(w.e)}</span>
+                <div style="margin-left:auto" class="filter-buttons"><button class="btn-status ${s==='p'?'selected':''}" onclick="setS('${w.e}','p')">完美</button><button class="btn-status ${s==='n'?'selected':''}" onclick="setS('${w.e}','n')">普通</button><button class="btn-status ${s==='u'?'selected':''}" onclick="setS('${w.e}','u')">不熟</button></div></div>
+                <div class="quiz-input-area"><input type="text" class="spell-input" id="i${i}" placeholder="挑戰正確拼寫..."><div style="display:flex; align-items:center; margin-top:5px;"><button class="ans-btn" id="b${i}" onclick="ans(${i},'${w.e.replace(/'/g, "\\'")}')">查看解答</button><span class="ans-text" id="a${i}">${w.e}</span></div></div>`;
+            l.appendChild(qdiv);
+        }
+    });
+}
+render();
+</script>
+</body>
+</html>
